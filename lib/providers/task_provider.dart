@@ -6,6 +6,7 @@ import '../models/task_model.dart';
 /// Task Provider for state management using Provider package
 class TaskProvider extends ChangeNotifier {
   static const String _tasksKey = 'tasks_list';
+  static const String _initializedKey = 'tasks_initialized';
   late SharedPreferences _prefs;
   List<Task> _tasks = [];
   bool _isLoaded = false;
@@ -23,9 +24,10 @@ class TaskProvider extends ChangeNotifier {
   Future<void> _loadTasks() async {
     try {
       final tasksJson = _prefs.getStringList(_tasksKey) ?? [];
+      final isInitialized = _prefs.getBool(_initializedKey) ?? false;
 
-      if (tasksJson.isEmpty) {
-        // If no saved tasks, use default tasks
+      if (tasksJson.isEmpty && !isInitialized) {
+        // First time app is opened - create default tasks
         _tasks = [
           Task(
             id: '1',
@@ -45,7 +47,9 @@ class TaskProvider extends ChangeNotifier {
           ),
         ];
         await _saveTasks();
+        await _prefs.setBool(_initializedKey, true);
       } else {
+        // Load saved tasks (or empty list if user deleted all)
         _tasks = tasksJson.map((taskJson) {
           return Task.fromJson(jsonDecode(taskJson));
         }).toList();
@@ -111,4 +115,32 @@ class TaskProvider extends ChangeNotifier {
 
   /// Get pending tasks count
   int get pendingTasksCount => _tasks.where((task) => !task.isCompleted).length;
+
+  /// Clear all tasks and reset the app
+  Future<void> clearAllTasks() async {
+    _tasks.clear();
+    await _saveTasks();
+    await _prefs.setBool(_initializedKey, false);
+    notifyListeners();
+  }
+
+  /// Reset to default tasks
+  Future<void> resetToDefaults() async {
+    _tasks = [
+      Task(
+        id: '1',
+        title: 'Design the UI mockups',
+        createdAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+      Task(
+        id: '2',
+        title: 'Review pull requests',
+        isCompleted: true,
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      Task(id: '3', title: 'Update documentation', createdAt: DateTime.now()),
+    ];
+    await _saveTasks();
+    notifyListeners();
+  }
 }
