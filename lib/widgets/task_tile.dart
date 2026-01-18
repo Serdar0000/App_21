@@ -24,6 +24,7 @@ class _TaskTileState extends State<TaskTile>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
@@ -32,6 +33,11 @@ class _TaskTileState extends State<TaskTile>
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
+
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(50, 0), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+        );
 
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
@@ -61,18 +67,18 @@ class _TaskTileState extends State<TaskTile>
     }
   }
 
+  void _deleteTask() {
+    _animationController.reverse().then((_) {
+      widget.onDelete();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return SlideTransition(
-      position: Tween<Offset>(begin: const Offset(50, 0), end: Offset.zero)
-          .animate(
-            CurvedAnimation(
-              parent: _animationController,
-              curve: Curves.easeOut,
-            ),
-          ),
+      position: _slideAnimation,
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Padding(
@@ -162,11 +168,7 @@ class _TaskTileState extends State<TaskTile>
 
                   /// Delete Icon
                   IconButton(
-                    onPressed: () {
-                      _animationController.reverse().then((_) {
-                        widget.onDelete();
-                      });
-                    },
+                    onPressed: _deleteTask,
                     icon: Icon(
                       Icons.delete_outline_rounded,
                       color: Theme.of(
